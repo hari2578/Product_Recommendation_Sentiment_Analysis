@@ -8,3 +8,4 @@ nltk
 xgboost
 imbalanced-learn
 gunicorn
+pyarrow
