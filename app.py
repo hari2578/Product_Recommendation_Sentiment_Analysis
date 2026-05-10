@@ -3,6 +3,9 @@ import pickle
 import pandas as pd
 import numpy as np
 import nltk
+nltk.download('stopwords')
+nltk.download('wordnet')
+nltk.download('punkt')
 from flask import Flask, render_template, request
 from flask import Flask, render_template_string, request
 import model  # This imports your model.py file
