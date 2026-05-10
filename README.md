@@ -17,8 +17,6 @@ You can access the live application here:
 **[Ebuss Recommendation Engine on Render](https://product-recommendation-sentiment-analysis.onrender.com/)**
 
 ---
-Category,Tools & Libraries,Purpose
-
 ### 🛠 Tech Stack
 
 | Category | Tools & Libraries | Purpose |
