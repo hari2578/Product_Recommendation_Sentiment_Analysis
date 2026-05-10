@@ -1,60 +1,62 @@
-
-"""According to the instructions to include "only one recommendation system," the User-Based 
-    approach was selected over the Item-Based approach because:
-
-    1. Personalization: It excels at discovering new products for a user based on the behavior 
-    of a "neighbor" with similar tastes.
-
-    2. Efficiency: For the specific dataset, the User-User matrix provides a more distinct set 
-    of recommendations that could then be effectively re-ranked by the sentiment model.
-"""
-import pandas as pd
-import numpy as np
 import pickle
+import pandas as pd
+import os
 
-# --- Initialize and Load Artifacts ---
+# Get the directory where model.py is located to handle paths correctly on any server
+basedir = os.path.abspath(os.path.dirname(__file__))
 
-sentiment_model = pickle.load(open('sentiment_model.pkl', 'rb'))
-tfidf_vectorizer = pickle.load(open('tfidf_vectorizer.pkl', 'rb'))
-user_final_rating = pickle.load(open('user_final_rating.pkl', 'rb'))
-df_cleaned = pd.read_pickle('df_cleaned.pkl')
-
-def get_sentiment_recommendations(user_input):
+def load_models():
     """
-    Core logic: Collaborative Filtering + Sentiment Filtering
+    Initializes and returns the final ML model and recommendation artifacts.
+    This fulfills the requirement to initialize the final models inside model.py.
     """
-    user_input_low = user_input.lower().strip()
-    # Check if user exists in the recommendation matrix
-    matching_users = [idx for idx in user_final_rating.index if str(idx).lower() == user_input_low]
-    
-    if not matching_users:
-        return None, "User not found."
-    
-    user_id = matching_users[0]
-    
-    # 1. Retrieve Top 20 products from Recommendation System for the selected user
-    user_row = user_final_rating.loc[user_id]
-    top_20_products = user_row.sort_values(ascending=False).head(20).index.tolist()
-    
-    product_scores = []
-    
-    # 2. Refining with Sentiment Model
-    for product in top_20_products:
-        clean_prod_name = str(product).strip()
-        product_reviews = df_cleaned[df_cleaned['name'].str.strip() == clean_prod_name]['reviews_processed']
+    # Loading the Sentiment Model (Logistic Regression)
+    with open(os.path.join(basedir, 'models/sentiment_model.pkl'), 'rb') as f:
+        sentiment_model = pickle.load(f)
         
-        if not product_reviews.empty:
-            tfidf_features = tfidf_vectorizer.transform(product_reviews)
-            predictions = sentiment_model.predict(tfidf_features)
-            score = np.mean(predictions) # Percentage of positive reviews
-            product_scores.append((product, score))
-        else:
-            product_scores.append((product, 0.5))
+    # Loading the TF-IDF Vectorizer
+    with open(os.path.join(basedir, 'models/tfidf_vectorizer.pkl'), 'rb') as f:
+        tfidf_vectorizer = pickle.load(f)
+        
+    # Loading the User-User Collaborative Filtering Dictionary (Top 20 per user)
+    with open(os.path.join(basedir, 'models/user_final_rating.pkl'), 'rb') as f:
+        recom_dict = pickle.load(f)
+        
+    # Loading the "Skinny" dataframe for product-review lookups
+    df_clean = pd.read_pickle(os.path.join(basedir, 'models/df_cleaned.pkl'))
+    
+    return sentiment_model, tfidf_vectorizer, recom_dict, df_clean
 
-    # 3. Sort by sentiment score and pick top 5 products for selected user
-    top_5_tuples = sorted(product_scores, key=lambda x: x[1], reverse=True)[:5]
-    return [p[0] for p in top_5_tuples], None
-
-def get_user_list():
-    """Helper to populate the dropdown"""
-    return sorted(user_final_rating.index.tolist())
+def get_sentiment_recommendations(user_input, sentiment_model, tfidf_vectorizer, recom_dict, df_clean):
+    """
+    1. Fetches Top 20 products for a user from the recommendation system.
+    2. Uses the Sentiment Model to rank those 20 products based on review sentiment.
+    3. Returns the Top 5 products with the highest positive sentiment.
+    """
+    user_input = user_input.strip().lower()
+    
+    # Check if user exists in our recommendation dictionary
+    if user_input not in recom_dict:
+        return None
+    
+    # Step 1: Get the Top 20 products from Collaborative Filtering
+    top_20_products = recom_dict[user_input]
+    
+    # Step 2: Filter the cleaned dataframe for these 20 products
+    # We use a copy to avoid SettingWithCopy warnings
+    temp_df = df_clean[df_clean['name'].isin(top_20_products)].copy()
+    
+    # Step 3: Vectorize the reviews of these products
+    X = tfidf_vectorizer.transform(temp_df['reviews_text'].values.astype(str))
+    
+    # Step 4: Predict sentiment (1 for Positive, 0 for Negative)
+    temp_df['predicted_sentiment'] = sentiment_model.predict(X)
+    
+    # Step 5: Group by product and calculate the mean positive sentiment score
+    # Higher mean = higher percentage of positive reviews
+    sentiment_scores = temp_df.groupby('name')['predicted_sentiment'].mean().reset_index()
+    
+    # Step 6: Sort by score and take the Top 5
+    top_5_products = sentiment_scores.sort_values(by='predicted_sentiment', ascending=False).head(5)
+    
+    return top_5_products['name'].tolist()
