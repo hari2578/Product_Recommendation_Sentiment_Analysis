@@ -4,63 +4,111 @@ import pandas as pd
 import numpy as np
 import nltk
 from flask import Flask, render_template, request
+from flask import Flask, render_template_string, request
+import model  # This imports your model.py file
 
 app = Flask(__name__)
 
-# Pre-download NLTK
-nltk.download(['stopwords', 'punkt', 'wordnet', 'omw-1.4', 'averaged_perceptron_tagger_eng'])
+# Initialize models and data structures from model.py
+# This ensures that your ML model and Recommendation system are loaded into memory once
+sentiment_model, vectorizer, recom_dict, df_clean = model.load_models()
 
-basedir = os.path.abspath(os.path.dirname(__file__))
+# HTML code for the user interface embedded directly within app.py
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ebuss - Product Recommendation System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .container { max-width: 800px; margin-top: 50px; }
+        .header-section { background-color: #004a99; color: white; padding: 30px; border-radius: 10px 10px 0 0; }
+        .main-card { background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .btn-primary { background-color: #004a99; border: none; padding: 10px 20px; }
+        .btn-primary:hover { background-color: #003366; }
+        .recommendation-list { margin-top: 30px; }
+        .list-group-item-success { border-left: 5px solid #198754; font-weight: 500; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-section text-center">
+            <h1>Ebuss</h1>
+            <p class="mb-0">Sentiment-Based Product Recommendation Engine</p>
+        </div>
+        
+        <div class="main-card">
+            <form action="/predict" method="post">
+                <div class="mb-3">
+                    <label for="username" class="form-label"><strong>Enter Username</strong> (e.g., jason, tina, mike):</label>
+                    <input class="form-control form-control-lg" list="user_options" name="username" id="username" placeholder="Search for a user..." required>
+                    <datalist id="user_options">
+                        {% for user in user_list %}
+                        <option value="{{ user }}">
+                        {% endfor %}
+                    </datalist>
+                    <div id="emailHelp" class="form-text">Type a registered username to get personalized suggestions.</div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 btn-lg">View Recommendations</button>
+            </form>
 
-def load_artifacts():
-    with open(os.path.join(basedir, 'models/user_final_rating.pkl'), 'rb') as f:
-        recom_dict = pickle.load(f)
-    with open(os.path.join(basedir, 'models/sentiment_model.pkl'), 'rb') as f:
-        model = pickle.load(f)
-    with open(os.path.join(basedir, 'models/tfidf_vectorizer.pkl'), 'rb') as f:
-        vec = pickle.load(f)
-    # Load DF and ensure it's a clean DataFrame
-    df = pd.read_pickle(os.path.join(basedir, 'models/df_cleaned.pkl'))
-    return model, vec, recom_dict, df
+            {% if message %}
+            <div class="alert alert-danger mt-4" role="alert">
+                {{ message }}
+            </div>
+            {% endif %}
 
-# Load once
-model, tfidf, recom_dict, df_clean = load_artifacts()
+            {% if recommendations %}
+            <div class="recommendation-list animate-in">
+                <h4 class="mb-3">Top 5 Products for <span class="text-primary">{{ username }}</span>:</h4>
+                <div class="list-group">
+                    {% for prod in recommendations %}
+                    <li class="list-group-item list-group-item-action list-group-item-success mb-2">
+                        {{ loop.index }}. {{ prod|title }}
+                    </li>
+                    {% endfor %}
+                </div>
+                <p class="text-muted mt-3 small">*These products are filtered using real-time sentiment analysis of all existing reviews.</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="text-center mt-4 text-muted small">
+            Built for IIITB Capstone Project | Machine Learning Engineer: Hari Vittal Mahendrakar
+        </div>
+    </div>
+</body>
+</html>
+"""
 
 @app.route('/')
 def home():
+    """Renders the landing page with the list of valid usernames."""
     users = sorted(list(recom_dict.keys()))
-    return render_template('index.html', user_list=users)
+    return render_template_string(HTML_TEMPLATE, user_list=users)
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    target_user = request.form['username'].strip().lower()
+    """Connects the frontend input to the backend model and returns the Top 5 products."""
+    user_input = request.form['username'].strip().lower()
     users = sorted(list(recom_dict.keys()))
     
-    if target_user not in recom_dict:
-        return render_template('index.html', user_list=users, message="User not found.")
-
-    # 1. Get Top 20
-    top_20 = recom_dict[target_user]
+    # Use the logic defined in model.py to get recommendations
+    top_5 = model.get_sentiment_recommendations(user_input, sentiment_model, vectorizer, recom_dict, df_clean)
     
-    # 2. Filter data (Using the pre-cleaned 'name' column from our new Notebook logic)
-    # This is much faster and avoids the .str.lower() crash
-    temp_df = df_clean[df_clean['name'].isin(top_20)].copy()
-    
-    if temp_df.empty:
-        return render_template('index.html', user_list=users, username=target_user, recommendations=top_20[:5])
-
-    # 3. Sentiment Ranking
-    try:
-        X = tfidf.transform(temp_df['reviews_text'].values.astype(str))
-        temp_df['preds'] = model.predict(X)
+    if top_5 is None:
+        # Return error if user is not in the collaborative filtering dictionary
+        return render_template_string(HTML_TEMPLATE, user_list=users, message="User not found. Please try a different username.")
         
-        # Calculate percentage of positive reviews
-        scores = temp_df.groupby('name')['preds'].mean().sort_values(ascending=False)
-        top_5 = scores.head(5).index.tolist()
-        
-        return render_template('index.html', user_list=users, username=target_user, recommendations=top_5)
-    except:
-        return render_template('index.html', user_list=users, username=target_user, recommendations=top_20[:5])
+    # Return successful recommendations
+    return render_template_string(HTML_TEMPLATE, 
+                                  user_list=users, 
+                                  recommendations=top_5, 
+                                  username=user_input)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
+    # Running locally - Gunicorn should be used for production (Render)
+    app.run()
