@@ -1,12 +1,10 @@
 import os
-import pickle
-import pandas as pd
-import numpy as np
 import nltk
+# Download NLTK data at the very start of the app
 nltk.download('stopwords')
 nltk.download('wordnet')
 nltk.download('punkt')
-from flask import Flask, render_template, request
+
 from flask import Flask, render_template_string, request
 import model  # This imports your model.py file
 
@@ -23,7 +21,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Product Recommendation System fr Ebuss using Sentiment Analysis</title>
+    <title>Product Recommendation System for Ebuss</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -78,8 +76,6 @@ HTML_TEMPLATE = """
             </div>
             {% endif %}
         </div>
-        
-       
     </div>
 </body>
 </html>
@@ -101,15 +97,12 @@ def predict():
     top_5 = model.get_sentiment_recommendations(user_input, sentiment_model, vectorizer, recom_dict, df_clean)
     
     if top_5 is None:
-        # Return error if user is not in the collaborative filtering dictionary
         return render_template_string(HTML_TEMPLATE, user_list=users, message="User not found. Please try a different username.")
         
-    # Return successful recommendations
     return render_template_string(HTML_TEMPLATE, 
                                   user_list=users, 
                                   recommendations=top_5, 
                                   username=user_input)
 
 if __name__ == '__main__':
-    # Running locally - Gunicorn should be used for production (Render)
     app.run()
