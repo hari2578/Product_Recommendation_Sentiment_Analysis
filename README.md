@@ -79,10 +79,10 @@ To handle memory constraints (512MB RAM) on the hosting platform:
 │   ├── sentiment_model.pkl       # Trained Logistic Regression model
 │   ├── tfidf_vectorizer.pkl      # Fitted TF-IDF Vectorizer
 │   ├── user_final_rating.pkl     # Optimized Recommendation Dictionary
-│   └── df_cleaned.pkl            # Skinny lookup DataFrame
-├── templates/
-│   └── index.html                # Frontend UI
-├── app.py                        # Flask Application logic
-├── model.py                      # Final ML and Recommendation initialization
-├── requirements.txt              # Production dependencies
-└── README.md                     # Project documentation
+│   └── df_cleaned.pkl            # Skinny lookup DataFrame for deployment
+├── .gitignore                    # (Optional) To ignore __pycache__ or local envs
+├── app.py                        # Flask file + Embedded HTML code
+├── model.py                      # Core ML and Recommendation initialization logic
+├── requirements.txt              # List of dependencies (Flask, pandas, sklearn, etc.)
+├── Sentiment_Based_Product_Recommendation_Hari_Vittal_Mahendrakar.ipynb  # The full end-to-end Jupyter Notebook
+└── README.md                     # Project documentation and summary
