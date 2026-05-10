@@ -1,9 +1,5 @@
 import pickle
 import pandas as pd
-import nltk
-nltk.download('stopwords')
-nltk.download('wordnet')
-nltk.download('punkt')
 import os
 
 # Get the directory where model.py is located to handle paths correctly on any server
