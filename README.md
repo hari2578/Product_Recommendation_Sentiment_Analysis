@@ -54,22 +54,26 @@ A modular pipeline was built using **NLTK** to clean raw user feedback:
 
 ### 4. Model Building (Sentiment Analysis)
 We evaluated **four** distinct classifiers to determine the optimal production model:
-* **Logistic Regression (Selected)**: Highest F1-Score (~92%) and low latency.
-* **Random Forest**: High accuracy but resulted in a large pickle file size.
-* **XGBoost**: Excellent performance, slightly higher computational overhead.
-* **Naive Bayes**: Provided a strong baseline but struggled with complex N-gram nuances.
+
+| Model | Accuracy | F1-Score | Analysis |
+| :--- | :--- | :--- | :--- |
+| **Logistic Regression** | ~92% | **High** | **Winner**: Best balance of speed and accuracy for deployment. |
+| **Random Forest** | ~89% | Medium | Robust but creates very large file sizes. |
+| **XGBoost** | ~91% | High | Strong performer, but slightly higher latency. |
+| **Naive Bayes** | ~87% | Medium | Good baseline, struggles with complex N-gram nuance. |
 
 ### 5. Recommendation Engine
 Compared two Collaborative Filtering approaches using **RMSE**:
-* **User-User Filtering (Selected)**: Based on user similarity; provided superior performance.
+* **User-User Filtering (Selected)**: Based on user similarity; provided superior performance and lower error rates.
 * **Item-Item Filtering**: Based on product similarity.
 
 ---
 
 ## 💻 Deployment & Optimization
 To handle memory constraints (512MB RAM) on the hosting platform:
-* **Matrix Serialization**: Converted the similarity matrix into a light-weight **Python Dictionary** (~2MB).
+* **Matrix Serialization**: Converted the heavy similarity matrix into a light-weight **Python Dictionary** (~2MB).
 * **Skinny DataFrames**: Removed non-essential columns from lookup data to ensure sub-second response times.
+* **Embedded UI**: The HTML frontend is embedded directly within `app.py` for a consolidated deployment structure.
 
 ---
 
@@ -80,9 +84,11 @@ To handle memory constraints (512MB RAM) on the hosting platform:
 │   ├── tfidf_vectorizer.pkl      # Fitted TF-IDF Vectorizer
 │   ├── user_final_rating.pkl     # Optimized Recommendation Dictionary
 │   └── df_cleaned.pkl            # Skinny lookup DataFrame for deployment
-├── .gitignore                    # (Optional) To ignore __pycache__ or local envs
+├── .gitignore                    # To ignore __pycache__ and local envs
 ├── app.py                        # Flask file + Embedded HTML code
 ├── model.py                      # Core ML and Recommendation initialization logic
-├── requirements.txt              # List of dependencies (Flask, pandas, sklearn, etc.)
-├── Sentiment_Based_Product_Recommendation_Hari_Vittal_Mahendrakar.ipynb  # The full end-to-end Jupyter Notebook
-└── README.md                     # Project documentation and summary
+├── requirements.txt              # List of dependencies
+├── Procfile                      # Deployment instructions for Gunicorn
+├── runtime.txt                   # Specified Python runtime version
+├── Sentiment_Based_Product_Recommendation_Hari_Vittal_Mahendrakar.ipynb
+└── README.md                     # Project documentation
