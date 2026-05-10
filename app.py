@@ -52,7 +52,7 @@ def predict():
         top_20_products = recommendation_dict[user_input]
         
         # Normalize for filtering
-        temp_df = df_clean[df_clean['name'].str.lower().str.strip().isin(
+        temp_df = df_clean[df_clean['name'].astype(str).str.lower().str.strip().isin(
             [p.lower().strip() for p in top_20_products]
         )].copy()
         
