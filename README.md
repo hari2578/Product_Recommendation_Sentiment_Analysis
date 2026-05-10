@@ -17,7 +17,24 @@ You can access the live application here:
 **[Ebuss Recommendation Engine on Render](https://product-recommendation-sentiment-analysis.onrender.com/)**
 
 ---
+Category,Tools & Libraries,Purpose
 
+### 🛠 Tech Stack
+
+| Category | Tools & Libraries | Purpose |
+| :--- | :--- | :--- |
+| **Language & Env** | **Python 3.10+**, Jupyter Notebook | Core programming and interactive prototyping. |
+| **Data Analysis** | **Pandas**, **NumPy** | Data cleaning, pivot tables, and matrix operations. |
+| **NLP** | **NLTK**, Regex | Text cleaning, tokenization, and lemmatization. |
+| **Feature Engineering**| **TF-IDF (Scikit-Learn)** | Converting text into weighted numerical vectors. |
+| **Machine Learning** | **Scikit-Learn**, **XGBoost** | Model training (Logistic Regression, RF) and evaluation. |
+| **Imbalance Handling** | **SMOTE** (Imbalanced-learn) | Handling skewed sentiment class distributions. |
+| **Web Framework** | **Flask**, Jinja2 | Building the web interface and API routing. |
+| **Production Server** | **Gunicorn** | WSGI HTTP Server for stable cloud deployment. |
+| **Deployment** | **Render** | Cloud hosting for the live web application. |
+| **Frontend** | HTML5, CSS3, **Bootstrap** | Designing a responsive user interface. |
+
+---
 ## 🛠️ Technical Workflow
 
 ### 1. Data Cleaning and Pre-Processing
