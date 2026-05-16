@@ -1,4 +1,4 @@
-# Ebuss: Sentiment-Based Product Recommendation System
+# Product Recommendation System using Sentiment Analysis
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![Flask](https://img.shields.io/badge/Framework-Flask-red.svg)
