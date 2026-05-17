@@ -42,9 +42,16 @@ def get_sentiment_recommendations(user_input, sentiment_model, tfidf_vectorizer,
     # Step 1: Get the Top 20 products from Collaborative Filtering
     top_20_products = recom_dict[user_input]
     
-    # Step 2: Filter the cleaned dataframe for these 20 products
-    # We use a copy to avoid SettingWithCopy warnings
-    temp_df = df_clean[df_clean['name'].isin(top_20_products)].copy()
+    # Step 2: Filter the cleaned dataframe safely using lowercase normalized matching
+    # This prevents errors caused by case sensitivity or accidental string whitespace
+    top_20_lower = [str(p).lower().strip() for p in top_20_products]
+    temp_df = df_clean[df_clean['name'].str.lower().str.strip().isin(top_20_lower)].copy()
+    
+    # SAFETY GUARD: Check if the product review dataframe is empty
+    if temp_df.empty:
+        # Fallback: If no matched text records exist in df_clean, return the top 5 directly 
+        # from the collaborative filter list rather than letting the web server crash
+        return top_20_products[:5]
     
     # Step 3: Vectorize the reviews of these products
     X = tfidf_vectorizer.transform(temp_df['reviews_text'].values.astype(str))
@@ -56,7 +63,19 @@ def get_sentiment_recommendations(user_input, sentiment_model, tfidf_vectorizer,
     # Higher mean = higher percentage of positive reviews
     sentiment_scores = temp_df.groupby('name')['predicted_sentiment'].mean().reset_index()
     
-    # Step 6: Sort by score and take the Top 5
-    top_5_products = sentiment_scores.sort_values(by='predicted_sentiment', ascending=False).head(5)
+    # Step 6: Sort products by positive sentiment score in descending order
+    sorted_recommendations = sentiment_scores.sort_values(by='predicted_sentiment', ascending=False)
     
-    return top_5_products['name'].tolist()
+    # Step 7: Extract the top 5 product names
+    top_5_products = sorted_recommendations['name'].head(5).tolist()
+    
+    # FALLBACK GUARD 2: If the group-by yielded fewer than 5 matching text items,
+    # fill remaining recommendation slots directly from the base collaborative filtering list
+    if len(top_5_products) < 5:
+        for prod in top_20_products:
+            if prod not in top_5_products:
+                top_5_products.append(prod)
+            if len(top_5_products) == 5:
+                break
+                
+    return top_5_products
