@@ -90,5 +90,5 @@ To handle memory constraints (512MB RAM) on the hosting platform:
 ├── requirements.txt              # List of dependencies
 ├── Procfile                      # Deployment instructions for Gunicorn
 ├── runtime.txt                   # Specified Python runtime version
-├── Sentiment_Based_Product_Recommendation_Hari_Vittal_Mahendrakar.ipynb
+├── Sentiment_Based_Product_Recommendation.ipynb
 └── README.md                     # Project documentation
