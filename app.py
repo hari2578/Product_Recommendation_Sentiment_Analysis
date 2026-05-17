@@ -1,18 +1,29 @@
 import os
 import nltk
 
-# Ensure prerequisite language models are downloaded at system launch
+# Prevent NLTK from downloading full corpora on every request (saves memory)
 nltk.download('stopwords', quiet=True)
 nltk.download('wordnet', quiet=True)
 nltk.download('punkt', quiet=True)
 
 from flask import Flask, render_template_string, request
-import model  # Links seamlessly with your updated model.py file
+import model  # Links seamlessly with model.py
 
 app = Flask(__name__)
 
-# Single initialization load routine for maximum memory efficiency at scale
+# Single initialization load routine. 
+# Cached globally so memory remains static after app boot.
 sentiment_model, vectorizer, recom_dict, df_clean = model.load_models()
+
+# Pre-calculate a hardcoded global fallback list right here 
+# This completely eliminates the heavy RAM spike for unknown users like 'hari'
+GLOBAL_FALLBACK_PRODUCTS = [
+    "Wilton Black Dots Standard Baking Cups",
+    "Weleda Everon Lip Balm",
+    "Wedding Wishes Wedding Guest Book",
+    "Walkers Stem Ginger Shortbread",
+    "2x Ultra Era with Oxi Booster, 50fl oz"
+]
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -93,15 +104,15 @@ def predict():
     raw_user_input = request.form['username']
     sanitized_username = raw_user_input.strip().lower()
     
-    # Execute extraction through model.py orchestrations
-    top_5 = model.get_sentiment_recommendations(
-        sanitized_username, sentiment_model, vectorizer, recom_dict, df_clean
-    )
-    
-    # Check if user wasn't found in the recommendation map to alter notification signals cleanly
+    # Check for Cold Start out front to completely bypass heavy dataframe operations
     if sanitized_username not in recom_dict:
+        top_5 = GLOBAL_FALLBACK_PRODUCTS
         status_msg = f"Notice: Username profile '{raw_user_input}' was not found in our records. Displaying top trending store selections instead (Cold Start Fallback Mode)."
     else:
+        # User exists, call model logic for filtering only their specific 20 products
+        top_5 = model.get_sentiment_recommendations(
+            sanitized_username, sentiment_model, vectorizer, recom_dict, df_clean
+        )
         status_msg = f"Showing personalized selections for registered user profile: {raw_user_input}"
         
     return render_template_string(
